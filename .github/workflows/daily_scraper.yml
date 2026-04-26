@@ -10,6 +10,9 @@ jobs:
   scrape-and-send:
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: write # Requis pour pouvoir pousser les modifications (history.json)
+
     steps:
     - name: Récupération du code
       uses: actions/checkout@v3
@@ -26,3 +29,11 @@ jobs:
 
     - name: Exécution du script
       run: python test.py
+      
+    - name: Sauvegarder l'historique
+      run: |
+        git config --global user.name "GitHub Action Bot"
+        git config --global user.email "action@github.com"
+        git add history.json || echo "Pas d'historique à ajouter"
+        git commit -m "Mise à jour de l'historique des articles [skip ci]" || echo "Rien à commiter"
+        git push || echo "Rien à push"

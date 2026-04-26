@@ -1,10 +1,27 @@
 import requests
 from bs4 import BeautifulSoup
 import time
+import json
+import os
 
 # Remplacez par votre token et chat ID valides
 TOKEN = "8639463749:AAFEIwxwzyQm-n98I3D9kqeSTCRwSri1jB4"
 CHAT_ID = "6273324705"
+HISTORY_FILE = "history.json"
+
+def load_history():
+    if os.path.exists(HISTORY_FILE):
+        try:
+            with open(HISTORY_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except:
+            return []
+    return []
+
+def save_history(history):
+    with open(HISTORY_FILE, "w", encoding="utf-8") as f:
+        # On garde les 100 derniers pour éviter que le fichier ne grossisse trop
+        json.dump(history[-100:], f, indent=4)
 
 def get_latest_news():
     url = "https://www.welovebuzz.com/"
@@ -35,7 +52,7 @@ def get_latest_news():
             if news_list: # Si on a trouvé des articles, on arrête de chercher avec d'autres balises
                 break
                 
-        return news_list[:10] # On limite aux 5 premières actualités
+        return news_list[:10] # On limite aux 10 premières actualités pour vérifier
     except Exception as e:
         print(f"Erreur lors de la récupération des news: {e}")
         return []
@@ -61,11 +78,23 @@ def main():
         print("Aucune actualité trouvée ou le site a bloqué la requête.")
         return
 
-    print(f"{len(news)} actualités trouvées. Envoi sur Telegram...")
-    for item in news:
+    history = load_history()
+    new_articles = [item for item in news if item['link'] not in history]
+
+    print(f"{len(news)} actualités trouvées. {len(new_articles)} sont nouvelles.")
+    
+    if not new_articles:
+        print("Aucune nouvelle actualité à envoyer.")
+        return
+
+    print("Envoi sur Telegram...")
+    for item in reversed(new_articles): # On envoie la plus ancienne des nouvelles d'abord
         message = f"📰 <b>{item['title']}</b>\n\n🔗 {item['link']}"
         send_to_telegram(message)
+        history.append(item['link'])
         time.sleep(1.5) # Pause pour éviter le spam
+
+    save_history(history)
 
 if __name__ == "__main__":
     main()
